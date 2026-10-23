@@ -6,17 +6,11 @@
 **Professor(a):** Alessandro
 
 ## Sobre o projeto
-Aplicativo Android em Kotlin que cadastra, lista, busca, atualiza e exclui produtos usando persistência local com Room (SQLite). Os dados ficam salvos no próprio celular e continuam lá mesmo depois de fechar o app.
+App Android em Kotlin que cadastra, lista, busca, atualiza e exclui produtos com Room (SQLite).
 
 ## Tecnologias
-- Kotlin 1.9.0
-- Room 2.6.1 (SQLite) com `kapt`
-- ViewBinding
-- Corrotinas (`lifecycleScope` + funções `suspend`)
-- RecyclerView + `ListAdapter` / `DiffUtil`
-- Material Components 3
-- Android Gradle Plugin 8.5.1 · Gradle 8.7 · compileSdk 34 · minSdk 24
-- Desenvolvido no Android Studio Koala (2024.1.1)
+- Kotlin, Room 2.6.1 (kapt), ViewBinding, corrotinas e RecyclerView
+- Android Studio Koala · AGP 8.5.1 · minSdk 24
 
 ## Estrutura
 ```
@@ -58,7 +52,7 @@ I TAG : Nenhum produto encontrado.
 ## Parte A: Complemento prático
 
 ### A1. Limpar campos após inserir
-**O que foi feito:** depois que o `insertAll` termina com sucesso (dentro da corrotina), a função `limparCampos()` apaga o conteúdo dos campos Nome, Preço, Descrição e Quantidade e chama `requestFocus()` no campo Nome, deixando o cursor pronto para o próximo cadastro.
+**O que foi feito:** após inserir, `limparCampos()` limpa os campos e volta o cursor para o Nome.
 
 ```kotlin
 lifecycleScope.launch {
@@ -76,12 +70,12 @@ private fun limparCampos() {
     binding.editProductName.requestFocus()
 }
 ```
-Print (campos limpos, cursor no Nome e o Toast "Produto inserido!"):
+Print:
 
 <img src="docs/prints/a1.png" width="260">
 
 ### A2. Validação de preço
-**O que foi feito:** o texto do preço é convertido com `toDoubleOrNull()`. Se o resultado for `null` (campo vazio ou inválido), zero ou negativo, o produto não é salvo e o erro aparece no próprio campo com `editProductPrice.error`. Também validei o nome (obrigatório) e a quantidade (não pode ser negativa).
+**O que foi feito:** preço vazio, zero ou negativo não é salvo, e o erro aparece no próprio campo.
 
 ```kotlin
 val price = priceText.toDoubleOrNull()
@@ -91,12 +85,12 @@ if (price == null || price <= 0) {
     return
 }
 ```
-Print (tentando salvar com preço 0):
+Print (preço 0):
 
 <img src="docs/prints/a2.png" width="260">
 
 ### A3. Lista na tela (desafio extra: RecyclerView)
-**O que foi feito:** em vez de mostrar só no Logcat, adicionei uma `RecyclerView` abaixo dos botões. Cada produto vira um card (`item_product.xml`) com id, nome, preço formatado em reais, quantidade e descrição. O `ProductAdapter` é um `ListAdapter` com `DiffUtil`, então basta chamar `submitList()` com a lista vinda do banco. O Logcat continua sendo usado também.
+**O que foi feito:** os produtos aparecem na tela numa `RecyclerView`, cada um em um card.
 
 ```kotlin
 // MainActivity
@@ -114,7 +108,7 @@ textDescription.text = product.description
 ```
 
 ### A4. Total do estoque
-**O que foi feito:** junto da lista, um `TextView` mostra quantos produtos estão cadastrados (`products.size`) e a soma dos preços (`products.sumOf { it.price }`), formatada como moeda brasileira. O total é atualizado toda vez que a lista muda (listar, buscar, inserir, atualizar ou excluir).
+**O que foi feito:** acima da lista aparecem a quantidade de produtos e a soma dos preços.
 
 ```kotlin
 private fun mostrarProdutos(products: List<Product>) {
@@ -124,12 +118,12 @@ private fun mostrarProdutos(products: List<Product>) {
     binding.textTotal.text = "Produtos: ${products.size}   |   Soma dos preços: ${total.toReais()}"
 }
 ```
-Print de A3 + A4 (3 produtos, soma R$ 149,90 + R$ 59,00 + R$ 899,90 = R$ 1.108,80):
+Print de A3 + A4:
 
 <img src="docs/prints/a3-a4.png" width="260">
 
 ### A5. Buscar por nome
-**O que foi feito:** criei a função `buscarPorNome` no DAO com `LIKE` e, na tela, um campo de busca com o botão Buscar. O texto digitado é envolvido por `%` (`"%$texto%"`) para encontrar qualquer nome que **contenha** o trecho. Se o campo estiver vazio, a lista completa é mostrada.
+**O que foi feito:** campo de busca e botão Buscar, usando `LIKE "%texto%"` no DAO.
 
 ```kotlin
 // ProductDao
@@ -142,12 +136,12 @@ lifecycleScope.launch {
     mostrarProdutos(products)
 }
 ```
-Print (busca por "mo" encontrou Mouse e Monitor; o `LIKE` do SQLite não diferencia maiúsculas/minúsculas):
+Print (busca por "mo"):
 
 <img src="docs/prints/a5.png" width="260">
 
 ### A6. Excluir produtos (+ desafio extra com `@Delete`)
-**O que foi feito:** o DAO ganhou `deleteAll()` com `DELETE FROM product`, ligado ao botão **Excluir Todos**, que antes pede confirmação num `AlertDialog` (para não apagar tudo sem querer). No desafio extra, cada card tem um ícone de lixeira que exclui só aquele produto usando `@Delete` (o Room usa a chave primária `id` do objeto para saber qual linha apagar).
+**O que foi feito:** o botão **Excluir Todos** usa `deleteAll()` e pede confirmação antes. No desafio extra, a lixeira de cada card exclui só aquele produto com `@Delete`.
 
 ```kotlin
 // ProductDao
@@ -165,12 +159,12 @@ private fun excluirProduto(product: Product) {
     }
 }
 ```
-| Excluindo só o Monitor (lixeira) | Confirmação | Depois de Excluir Todos |
+| Lixeira | Confirmação | Excluir Todos |
 |---|---|---|
 | <img src="docs/prints/a6-item.png" width="220"> | <img src="docs/prints/a6-dialogo.png" width="220"> | <img src="docs/prints/a6.png" width="220"> |
 
 ### A7. Atualizar produto
-**O que foi feito:** criei a função `update` com `@Update` no DAO. Na tela, o usuário informa o **id** e o **novo preço** (ou simplesmente toca em um produto da lista, que já preenche esses dois campos). O app busca o produto com `getById`, cria uma cópia com o novo preço usando `copy(price = ...)` e chama `update`. O Room encontra a linha pelo `id` e atualiza.
+**O que foi feito:** basta informar o id e o novo preço, ou tocar no produto da lista. O app altera o preço com `@Update`.
 
 ```kotlin
 // ProductDao
@@ -191,12 +185,12 @@ lifecycleScope.launch {
     listarProdutos()
 }
 ```
-| Antes (Mouse a R$ 59,00, id 2 selecionado) | Depois (Mouse a R$ 49,90) |
+| Antes | Depois |
 |---|---|
 | <img src="docs/prints/a7-antes.png" width="260"> | <img src="docs/prints/a7.png" width="260"> |
 
 ### A8. Novo campo na tabela (`quantity`) e versão 2 do banco
-**O que foi feito:** adicionei `quantity: Int` na entidade `Product`, um campo "Quantidade em estoque" no layout e aumentei a versão do banco de `1` para `2` no `@Database`.
+**O que foi feito:** adicionamos `quantity` na entidade e no layout e subimos o banco para a versão 2.
 
 ```kotlin
 @Entity
@@ -212,7 +206,7 @@ data class Product(
 abstract class AppDatabase : RoomDatabase() { ... }
 ```
 
-**O que aconteceu com os produtos já cadastrados:** eles foram **apagados**. Testei assim: deixei no emulador um banco na versão 1 (tabela `product` sem a coluna `quantity`) com dois produtos e depois abri o app na versão 2:
+**O que aconteceu com os produtos já cadastrados:** foram **apagados**. Teste no emulador:
 
 ```
 -- banco antes (versão 1)
@@ -227,9 +221,9 @@ colunas: id, name, price, description, quantity
 total de produtos = 0
 ```
 
-**Por quê:** quando o Room abre o banco, ele compara a versão gravada no arquivo (1) com a versão declarada no código (2). Como a estrutura mudou, ele precisa de uma *Migration* que diga como sair da versão 1 e chegar à 2 (por exemplo, `ALTER TABLE product ADD COLUMN quantity INTEGER NOT NULL DEFAULT 0`). Eu não escrevi essa migração, e o banco foi criado com `.fallbackToDestructiveMigration()`. Com essa opção, quando falta a migração, o Room **apaga todas as tabelas e cria tudo de novo** com a estrutura nova, então os dados antigos se perdem. Sem o `fallbackToDestructiveMigration()`, o app fecharia com um erro do tipo `IllegalStateException: A migration from 1 to 2 was required but not found`.
+**Por quê:** a versão mudou de 1 para 2 e não criamos uma *Migration*. Por causa do `fallbackToDestructiveMigration()`, o Room apagou o banco e o recriou com a estrutura nova.
 
-| Campo Quantidade no formulário | Lista vazia depois da migração destrutiva |
+| Campo Quantidade | Depois da migração |
 |---|---|
 | <img src="docs/prints/a8-campo.png" width="260"> | <img src="docs/prints/a8-migracao.png" width="260"> |
 
