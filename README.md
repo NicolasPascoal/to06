@@ -1,9 +1,9 @@
 # AppRoomProduto: Cadastro de Produtos com Room SQLite
 
-**Aluno(a):** Seu Nome Completo
-**RA:** 000000
+**Alunos:** Nicolas Gomes Pascoal | Wendel Miranda
+**RA:** 242357 | 242740
 **Disciplina:** Programação para Dispositivos Móveis
-**Professor(a):** Nome do Professor
+**Professor(a):** Alessandro
 
 ## Sobre o projeto
 Aplicativo Android em Kotlin que cadastra, lista, busca, atualiza e exclui produtos usando persistência local com Room (SQLite). Os dados ficam salvos no próprio celular e continuam lá mesmo depois de fechar o app.
